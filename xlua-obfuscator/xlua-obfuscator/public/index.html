@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XLua Obfuscator</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 800px;
+      text-align: center;
+    }
+
+    .gradient-title {
+      font-size: 3em;
+      background: linear-gradient(to top, #000 0%, #fff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 20px;
+    }
+
+    .input-section, .output-section {
+      margin: 30px 0;
+    }
+
+    #editor {
+      width: 100%;
+      height: 300px;
+      border: 1px solid #333;
+      border-radius: 4px;
+    }
+
+    .obfuscate-btn {
+      background-color: #fff;
+      color: #000;
+      border: none;
+      padding: 12px 24px;
+      font-size: 1em;
+      cursor: pointer;
+      border-radius: 50px; /* Round button */
+      margin-top: 20px; /* Spacing from editor */
+      transition: background-color 0.3s;
+    }
+
+    .obfuscate-btn:hover {
+      background-color: #ccc;
+    }
+
+    .output-section h2 {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      background-color: #222;
+      color: #fff;
+      border: 1px solid #333;
+      padding: 10px;
+      font-family: 'Courier New', monospace;
+      resize: vertical;
+      height: 300px;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="gradient-title">XLua Obfuscator</h1>
+    <div class="input-section">
+      <div id="editor"></div>
+      <button class="obfuscate-btn" onclick="obfuscateCode()">Obfuscate</button>
+    </div>
+    <div class="output-section">
+      <h2>Obfuscated Code</h2>
+      <textarea id="outputCode" readonly></textarea>
+    </div>
+  </div>
+
+  <!-- Load Monaco Editor from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs/loader.min.js"></script>
+  <script>
+    require.config({
+      paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.34.0/min/vs' }
+    });
+
+    let editor;
+    require(['vs/editor/editor.main'], () => {
+      editor = monaco.editor.create(document.getElementById('editor'), {
+        value: '-- Enter your Lua code here...\n',
+        language: 'lua',
+        theme: 'vs-dark',
+        automaticLayout: true,
+        fontSize: 14,
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false
+      });
+    });
+
+    async function obfuscateCode() {
+      const inputCode = editor.getValue();
+      const outputCode = document.getElementById('outputCode');
+
+      try {
+        const response = await fetch('/obfuscate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: inputCode }),
+        });
+
+        const data = await response.json();
+        if (data.error) {
+          outputCode.value = 'Error: ' + data.error;
+        } else {
+          outputCode.value = data.obfuscated;
+        }
+      } catch (error) {
+        outputCode.value = 'Error: Failed to obfuscate code';
+      }
+    }
+  </script>
+</body>
+</html>
