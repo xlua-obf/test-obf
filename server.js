@@ -1,47 +1,40 @@
 const express = require('express');
+const fs = require('fs');
 const { exec } = require('child_process');
-const fs = require('fs').promises;
 const path = require('path');
 const app = express();
-const port = 3000;
+const PORT = 3000;
 
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static('.'));
 
-app.post('/obfuscate', async (req, res) => {
-  const { code } = req.body;
-  if (!code) {
-    return res.status(400).json({ error: 'No code provided' });
-  }
+app.post('/obfuscate', (req, res) => {
+  const inputCode = req.body.code;
+  const inputFile = path.join(__dirname, 'input.lua');
+  const outputFile = path.join(__dirname, 'output.lua');
 
-  try {
-    const inputFile = path.join(__dirname, 'temp_input.lua');
-    const outputFile = path.join(__dirname, 'temp_output.lua');
-    await fs.writeFile(inputFile, code);
+  // Write input to file
+  fs.writeFileSync(inputFile, inputCode);
 
-    const prometheusPath = path.join(__dirname, 'prometheus', 'cli.lua');
-    const command = `luajit ${prometheusPath} --preset Medium ${inputFile} ${outputFile}`;
+  // Run Prometheus with "Strong" preset
+  const command = `lua Prometheus-master/cli.lua ${inputFile} ${outputFile} --preset Strong`;
 
-    exec(command, async (error, stdout, stderr) => {
-      if (error) {
-        console.error('Prometheus error:', stderr);
-        return res.status(500).json({ error: 'Obfuscation failed: ' + stderr });
+  exec(command, (err, stdout, stderr) => {
+    if (err || stderr) {
+      console.error(err || stderr);
+      return res.status(500).json({ error: stderr || err.message });
+    }
+
+    // Read and send obfuscated code
+    fs.readFile(outputFile, 'utf8', (readErr, data) => {
+      if (readErr) {
+        return res.status(500).json({ error: readErr.message });
       }
-
-      try {
-        const obfuscatedCode = await fs.readFile(outputFile, 'utf8');
-        await fs.unlink(inputFile);
-        await fs.unlink(outputFile);
-        res.json({ obfuscated: obfuscatedCode });
-      } catch (err) {
-        res.status(500).json({ error: 'Failed to read obfuscated code' });
-      }
+      res.json({ obfuscatedCode: data });
     });
-  } catch (err) {
-    res.status(500).json({ error: 'Server error: ' + err.message });
-  }
+  });
 });
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
 });
